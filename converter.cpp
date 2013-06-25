@@ -1,8 +1,4 @@
 // 2013-06 - Saman
-// reading a video tree structure, appending black frames to mp4 files
-// and converting them to webm, and creating video tree structure for new files
-// requires ffmpeg and vpxenc, accessible from binary folder
-// $ ./converter sourcevideos_path destvideos_path targetBitsPerPixel
 
 #include <dirent.h>
 #include <string.h>
@@ -49,7 +45,7 @@ bool findReg(const char *s, const char *p, int &ansb, int &anse)
 }
 
 // loading a directory, convertin mp4s and copying everything to new directory
-int loadData(const char *sourcePath, const char *destPath)
+int loadData(const char *sourcePath, const char *destPathmp4, const char *destPathwebm)
 {
 	struct dirent *entry;
 	DIR *dp;
@@ -73,45 +69,46 @@ int loadData(const char *sourcePath, const char *destPath)
 		// if this is a directory or a symlink, go inside it and make a similar structure in destination
 		if((S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode)))
 		{
-      mkdir(((string)destPath+'/'+f).c_str(),0777);
-			loadData(fullPath.c_str(),((string)destPath+'/'+f).c_str());
+      mkdir(((string)destPathmp4+'/'+f).c_str(),0777);
+      mkdir(((string)destPathwebm+'/'+f).c_str(),0777);
+			loadData(fullPath.c_str(), ((string)destPathmp4+'/'+f).c_str(), ((string)destPathwebm+'/'+f).c_str());
 		}
     // if this is an mp4 file, append black video, convert it to webm and copy it
 		else if(S_ISREG(st.st_mode) && f.length() > 4 && f.substr(f.length()-3)=="mp4")
 		{
 			// adding black frames
       cout << fullPath << ": adding black frames, " << flush;
-      sprintf(buf,"./ffmpeg -y -i %s/black.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp2 > /dev/null 2>&1 & ./ffmpeg -y -i %s -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp1 > /dev/null 2>&1 & ./ffmpeg -y -f mpegts -i \"concat:%s/temp1|%s/temp2\" -c copy %s/%s > /dev/null 2>&1",destTop,destTop,fullPath.c_str(),destTop,destTop,destTop,destPath,f.c_str());
+      sprintf(buf,"./ffmpeg -y -i %s/black.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp2 > /dev/null 2>&1 & ./ffmpeg -y -i %s -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp1 > /dev/null 2>&1 & ./ffmpeg -y -f mpegts -i \"concat:%s/temp1|%s/temp2\" -c copy %s/%s > /dev/null 2>&1",destTop,destTop,fullPath.c_str(),destTop,destTop,destTop,destPathmp4,f.c_str());
       system(buf);
       
       // converting to webm
       cout << "encoding to yuv, " << flush;
-      sprintf(buf,"./ffmpeg -i %s/%s -pix_fmt yuv420p %s/%s.yuv > /dev/null 2>&1", destPath, f.c_str(), destPath, f.c_str());
-      
+      sprintf(buf,"cp %s %s/%s", fullPath.c_str(), destPathwebm,f.c_str());
+      system(buf);
+      sprintf(buf,"./ffmpeg -i %s/%s -pix_fmt yuv420p %s/%s.yuv > /dev/null 2>&1", destPathwebm, f.c_str(), destPathwebm, f.c_str());
       system(buf);
       
       cout << "decoding to webm, pass 1, " << flush;
-      sprintf(buf,"./vpxenc %s/%s.yuv -o %s/%s.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=1 --minsection-pct=0 --maxsection-pct=800 -t 0 > /dev/null 2>&1", destPath, f.c_str(), destPath, f.substr(0,f.length()-4).c_str(), width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), lround(width * height * fps * targetBitsPerPixel / 8000.0));
-  
+      sprintf(buf,"./vpxenc %s/%s.yuv -o %s/%s.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=1 --minsection-pct=0 --maxsection-pct=800 -t 0 > /dev/null 2>&1", destPathwebm, f.c_str(), destPathwebm, f.substr(0,f.length()-4).c_str(), width, height, lround(fps), destPathwebm, f.substr(0,f.length()-4).c_str(), lround(width * height * fps * targetBitsPerPixel / 8000.0));
       system(buf);
       
       cout << "pass 2, " << flush;
-      sprintf(buf,"./vpxenc %s/%s.yuv -o %s/%s.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=2 --minsection-pct=5 --maxsection-pct=1000 --bias-pct=50 -t 6 --end-usage=vbr --good --profile=0 --arnr-maxframes=7 --arnr-strength=5 --arnr-type=3 --psnr > /dev/null 2>&1", destPath, f.c_str(), destPath, f.substr(0,f.length()-4).c_str(), width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), lround(width * height * fps * targetBitsPerPixel / 8000.0));
-      
+      sprintf(buf,"./vpxenc %s/%s.yuv -o %s/%s.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=2 --minsection-pct=5 --maxsection-pct=1000 --bias-pct=50 -t 6 --end-usage=vbr --good --profile=0 --arnr-maxframes=7 --arnr-strength=5 --arnr-type=3 --psnr > /dev/null 2>&1", destPathwebm, f.c_str(), destPathwebm, f.substr(0,f.length()-4).c_str(), width, height, lround(fps), destPathwebm, f.substr(0,f.length()-4).c_str(), lround(width * height * fps * targetBitsPerPixel / 8000.0));
       system(buf);
       
       // deleting mp4, fpf and yuv files
       cout << "deleting temp files, " << flush;
-      sprintf(buf,"rm %s/%s.m* %s/%s.fpf -f", destPath, f.substr(0,f.length()-4).c_str(), destPath, f.substr(0,f.length()-4).c_str());
-      
+      sprintf(buf,"rm %s/%s.m* %s/%s.fpf -f", destPathwebm, f.substr(0,f.length()-4).c_str(), destPathwebm, f.substr(0,f.length()-4).c_str());
       system(buf);
       cout << "done!" << endl;
 		}
     // otherwise copy it
     else
     {
-      sprintf(buf,"cp %s %s",fullPath.c_str(),destPath);
       cout << fullPath << ": copying" << endl;
+      sprintf(buf,"cp %s %s",fullPath.c_str(),destPathmp4);
+      system(buf);
+      sprintf(buf,"cp %s %s",fullPath.c_str(),destPathwebm);
       system(buf);
     }
 	}
@@ -121,7 +118,7 @@ int loadData(const char *sourcePath, const char *destPath)
 }
 
 // do some preparation
-int prepareData(const char *sourcePath, const char *destPath)
+int prepareData(const char *sourcePath, const char *destPathmp4, const char *destPathwebm)
 {
   // check whether ./ffmpeg & ./vpxenc exist
   if (!file_exists("ffmpeg") || !file_exists("vpxenc"))
@@ -183,39 +180,44 @@ int prepareData(const char *sourcePath, const char *destPath)
     return -1;
   }
   
-  // check for destination directory; it shouldn't exist
-  if (file_exists(destPath))
+  // check for destination directories; they shouldn't exist
+  if (file_exists(destPathmp4) || file_exists(destPathwebm))
   {
-    cout << "Destination folder already exists. Please first remove it." << endl;
+    cout << "Destination folders already exists. Please first remove them." << endl;
     return -1;
   }
   
-  // create destination directory
-  cout << "Creating destination folder ..." << endl;
+  // create destination directories
+  cout << "Creating destination folders ..." << endl;
   umask(~0777);
-  if (mkdir(destPath, 0777))
+  if (mkdir(destPathmp4, 0777))
+  {
+    perror("mkdir");
+    return -1;
+  }
+  if (mkdir(destPathwebm, 0777))
   {
     perror("mkdir");
     return -1;
   }
   
   // create a 10 frame, 1 second black video in correct width and height
-  sprintf(buf,"./ffmpeg -t 1 -s %dx%d -vcodec rawvideo -f rawvideo -pix_fmt rgb24 -r 10 -i /dev/zero -vcodec libx264 -preset slow -pix_fmt yuv420p %s/black.mp4 > /dev/null 2>&1",width,height,destPath);
+  sprintf(buf,"./ffmpeg -t 1 -s %dx%d -vcodec rawvideo -f rawvideo -pix_fmt rgb24 -r 10 -i /dev/zero -vcodec libx264 -preset slow -pix_fmt yuv420p %s/black.mp4 > /dev/null 2>&1",width,height,destPathmp4);
   cout << "Creating black frames ..." << endl;
   system(buf);
   
   // create fifo files
+  sprintf(destTop,"%s",destPathmp4);
   cout << "Creating temporary fifo files ..." << endl;
-  sprintf(buf,"mkfifo %s/temp1 %s/temp2",destPath,destPath);
+  sprintf(buf,"mkfifo %s/temp1 %s/temp2", destTop, destTop);
   system(buf);
   
-  // recursively check for files, convert mp4s and copy them
-  sprintf(destTop,"%s",destPath);
-  int res = loadData(sourcePath, destPath);
+  // recursively check for files, add black frames, convert mp4s
+  int res = loadData(sourcePath, destPathmp4, destPathwebm);
   
   // delete fifo files and black video
   cout << "Deleting temporary files ..." << endl;
-  sprintf(buf,"rm -f %s/temp1 %s/temp2 %s/black.mp4",destPath,destPath,destPath);
+  sprintf(buf,"rm -f %s/temp1 %s/temp2 %s/black.mp4",destTop, destTop, destTop);
   system(buf);
   
   // finish
@@ -225,15 +227,15 @@ int prepareData(const char *sourcePath, const char *destPath)
 int main(int argc, char **argv)
 {
   // check whether there are right amount of parameters
-  if (argc != 4)
+  if (argc != 5)
   {
-    cout << "incorrect parameters." << endl;
-    cout << "usage: ./converter sourcevideos_path destvideos_path targetBitsPerPixel" << endl;
+    cout << "incorrect parameters, usage: " << endl;
+    cout << "./converter sourcevideos_path destvideos_path_mp4 desvideos_path_webm targetBitsPerPixel" << endl;
   }
   
   // do computations using source and destination folder
-  targetBitsPerPixel = atoi(argv[3]);
-  int res = prepareData(argv[1], argv[2]);
+  targetBitsPerPixel = atoi(argv[4]);
+  int res = prepareData(argv[1], argv[2], argv[3]);
   
   if (!res)
     cout << "Converting finished successfully." << endl;

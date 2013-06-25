@@ -1,10 +1,13 @@
 mp4tm2webm
 ==========
 
-converts old timemachines (mp4) to webm (with black frames at the end)
+converts old timemachines
 
 2013-06 - Saman
-reading a video tree structure, appending black frames to mp4 files
-and converting them to webm, and creating video tree structure for new files
+
+- reads old video tree, appends black frames to mp4 files and creates a new video tree.
+- reads old video tree, converts them to webm and creates a new video tree.
+
 requires ffmpeg and vpxenc, accessible from binary folder
-$ ./converter sourcevideos_path destvideos_path targetBitsPerPixel
+
+$ ./converter sourcevideos_path destvideos_path_mp4 desvideos_path_webm targetBitsPerPixel
