@@ -11,3 +11,5 @@ converts old timemachines
 requires ffmpeg and vpxenc, accessible from binary folder
 
 $ ./converter sourcevideos_path destvideos_path_mp4 desvideos_path_webm targetBitsPerPixel
+
+a targetBitsPerPixel of around 0.5 seems reasonable.

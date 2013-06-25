@@ -14,7 +14,8 @@ using namespace std;
 
 char buf[2000];
 char destTop[100];
-int width, height, fps, targetBitsPerPixel;
+int width, height, fps;
+double targetBitsPerPixel;
 
 inline long lround(double x) {
   return (x > 0.0) ? (long)floor(x + 0.5) : (long)ceil(x - 0.5);
@@ -234,7 +235,7 @@ int main(int argc, char **argv)
   }
   
   // do computations using source and destination folder
-  targetBitsPerPixel = atoi(argv[4]);
+  targetBitsPerPixel = atof(argv[4]);
   int res = prepareData(argv[1], argv[2], argv[3]);
   
   if (!res)
