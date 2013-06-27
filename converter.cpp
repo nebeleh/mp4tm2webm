@@ -6,7 +6,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
-#include <regex.h>
+#include "picojson.h"
 #include <string>
 #include <cmath>
 
@@ -14,8 +14,8 @@ using namespace std;
 
 char buf[2000];
 char destTop[100];
-int width, height, fps;
-double targetBitsPerPixel;
+int width, height;
+double targetBitsPerPixel, fps;
 
 inline long lround(double x) {
   return (x > 0.0) ? (long)floor(x + 0.5) : (long)ceil(x - 0.5);
@@ -25,24 +25,6 @@ bool file_exists(const char *path)
 {
   struct stat s;
   return (0 == stat(path, &s));
-}
-
-bool findReg(const char *s, const char *p, int &ansb, int &anse)
-{
-  regex_t re;
-  regmatch_t rm;
-  int status;
-  regcomp(&re, p, REG_EXTENDED); 
-  status = regexec(&re, s, 1, &rm, 0);
-  regfree(&re);
-  if (status)
-  {
-    cout << "r.json doesn't have required information." << endl;
-    return 0;
-  }
-  ansb = rm.rm_so;
-  anse = rm.rm_eo;
-  return 1;
 }
 
 // loading a directory, convertin mp4s and copying everything to new directory
@@ -151,24 +133,37 @@ int prepareData(const char *sourcePath, const char *destPath)
     fread(contents,len,1,in); //read into buffer
     fclose(in);
     
-    int a,b;
-    if (!findReg(contents,"video_height\\S\\S[0-9]+",a,b))
-      return -1;
-    memset(buf,0,sizeof(buf));
-    strncpy(buf,contents+a+14,b-a-14);
-    height = atoi(buf);
+    picojson::value v;
+    string err;
+    picojson::parse(v, contents, contents + strlen(contents), &err);
+    if (! err.empty()) {
+      cout << err << endl;
+    }
     
-    if (!findReg(contents,"video_width\\S\\S[0-9]+",a,b))
-      return -1;
-    memset(buf,0,sizeof(buf));
-    strncpy(buf,contents+a+13,b-a-13);
-    width = atoi(buf);
+    // check if the type of the value is "object"
+    if (! v.is<picojson::object>()) {
+      cout << "JSON is not an object" << endl;
+      exit(2);
+    }
+
+    // obtain a const reference to the map, and print the contents
+    height = -1;
+    width = -1;
+    fps = -1;
+    const picojson::value::object& obj = v.get<picojson::object>();
+    for (picojson::value::object::const_iterator i = obj.begin(); i != obj.end(); ++i) {
+      if (i->first == "video_height") { height = atoi(i->second.to_str().c_str()); }
+      if (i->first == "video_width") { width = atoi(i->second.to_str().c_str()); }
+      if (i->first == "fps") { fps = atof(i->second.to_str().c_str()); }
+    }
     
-    if (!findReg(contents,"fps\\S\\S\\S[0-9]+",a,b))
+    if (height == -1 || width == -1 || fps == -1)
+    {
+      cout << "not enough inputs in JSON." << endl;
       return -1;
-    memset(buf,0,sizeof(buf));
-    strncpy(buf,contents+a+6,b-a-6);
-    fps = atoi(buf);
+    }
+    
+    cout << "width: " << width << ", height: " << height << ", fps: " << fps << endl;
   }
   else
   {
