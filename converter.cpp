@@ -215,7 +215,7 @@ int main(int argc, char **argv)
   // check whether there are right amount of parameters
   if (argc != 4)
   {
-    cout << "incorrect parameters, usage: " << endl;
+    cout << "incorrect parameters, usage is: " << endl;
     cout << "./converter sourcevideos_path destvideos_path targetBitsPerPixel" << endl;
     return -1;
   }
