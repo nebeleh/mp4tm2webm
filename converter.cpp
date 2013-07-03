@@ -217,6 +217,7 @@ int main(int argc, char **argv)
   {
     cout << "incorrect parameters, usage: " << endl;
     cout << "./converter sourcevideos_path destvideos_path targetBitsPerPixel" << endl;
+    return -1;
   }
   
   // do computations using source and destination folder
