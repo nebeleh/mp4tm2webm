@@ -13,7 +13,7 @@
 using namespace std;
 
 char buf[2000];
-char destTop[100];
+char destTop[2000];
 int width, height;
 double targetBitsPerPixel, fps;
 
