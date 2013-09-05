@@ -56,7 +56,10 @@ int loadData(const char *sourcePath, const char *destPath)
     if((S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode)))
     {
       if(!file_exists(tempDestPath.c_str()))
+      {
+        umask(~0777);
         mkdir(tempDestPath.c_str(),0777);
+      }
       loadData(fullPath.c_str(), tempDestPath.c_str());
     }
     // if this is an mp4 file, append black video, convert it to webm and copy it
