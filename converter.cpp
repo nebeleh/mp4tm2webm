@@ -189,10 +189,10 @@ int prepareData(const char *sourcePath, const char *destPath)
   }
 
   // create destination folders if they don't exist
+  umask(~0777);
   if (!file_exists(destPath))
   {
     cout << "Creating destination folder ..." << endl;
-    umask(~0777);
     if (mkdir(destPath, 0777))
     {
       perror("mkdir");
