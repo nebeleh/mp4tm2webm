@@ -1,0 +1,22 @@
+#!/bin/sh
+
+SET="vancouver-harbor-v2/vancouver-harbor-v2-crf28-6fps-1088x624"
+VID="1/0/1.*"
+
+TINP="/home/rsargent/saman/web-converter/submit/test-source"
+TOUT="/home/rsargent/saman/web-converter/submit/test-dest"
+WDIR="/gigapan/gigapan7.usr0/web/timemachines/$SET"
+
+if [ "$PBS_ARRAYID" == "1" ]; then
+	cd $TOUT
+	rm -rf *
+	cd $TINP
+	rm -rf *
+	cp $WDIR/r.json .
+	cp -R $WDIR/$VID .
+else
+	sleep 15
+fi
+
+cd /home/rsargent/saman/web-converter/mp4tm2webm
+./converter $TINP $TOUT/$PBS_ARRAYID $PBS_ARRAYID &> ../logs/log_`date +"%y-%m-%d_%H-%M-%S"`_test_$PBS_ARRAYID

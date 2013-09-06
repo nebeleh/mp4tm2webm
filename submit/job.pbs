@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cd /home/rsargent/saman/web-converter/mp4tm2webm
+WDIR="/gigapan/gigapan7.usr0/web/timemachines/pittsburgh-v12/crf26-12fps-l70-1088x624"
+./converter $WDIR $WDIR-new 2 &> ../logs/pittsburgh_`date +"%y-%m-%d_%H-%M-%S"`

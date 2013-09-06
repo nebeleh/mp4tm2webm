@@ -1,0 +1,3 @@
+#!/bin/sh
+
+qsub -o logs/log -j oe job.pbs
