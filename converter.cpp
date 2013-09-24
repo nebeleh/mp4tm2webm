@@ -77,7 +77,11 @@ int loadData(const char *sourcePath, const char *destPath)
 
       // adding black frames
       cout << fullPath << ": adding black frames, " << flush;
-      sprintf(buf,"./ffmpeg -y -i %s/black-%d.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp2-%d &> /dev/null & ./ffmpeg -y -i %s -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp1-%d &> /dev/null & ./ffmpeg -y -f mpegts -i \"concat:%s/temp1-%d|%s/temp2-%d\" -c copy %s/%s &> /dev/null", destTop, instanceNumber, destTop, instanceNumber, fullPath.c_str(), destTop, instanceNumber, destTop, instanceNumber, destTop, instanceNumber, destPath,f.c_str());
+      sprintf(buf,"./ffmpeg -y -i %s/black-%d.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp2-%d &> /dev/null & ./ffmpeg -y -i %s -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp1-%d &> /dev/null & ./ffmpeg -y -f mpegts -i \"concat:%s/temp1-%d|%s/temp2-%d\" -c copy %s/%s-%d.mp4 &> /dev/null", destTop, instanceNumber, destTop, instanceNumber, fullPath.c_str(), destTop, instanceNumber, destTop, instanceNumber, destTop, instanceNumber, destPath, f.c_str(), instanceNumber);
+      system(buf);
+
+      cout << "renaming tmp, " << flush;
+      sprintf(buf, "mv %s/%s-%d.mp4 %s/%s", destPath, f.c_str(), instanceNumber, destPath, f.c_str());
       system(buf);
 
       // converting to webm
@@ -86,11 +90,15 @@ int loadData(const char *sourcePath, const char *destPath)
       system(buf);
 
       cout << "decoding to webm, pass 1, " << flush;
-      sprintf(buf,"./vpxenc %s/%s-%d.yuv -o %s/%s.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=1 --minsection-pct=0 --maxsection-pct=800 -t 0 &> /dev/null", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, lround(width * height * fps * targetBitsPerPixel / 8000.0));
+      sprintf(buf,"./vpxenc %s/%s-%d.yuv -o %s/%s-%d.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=1 --minsection-pct=0 --maxsection-pct=800 -t 0 &> /dev/null", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, lround(width * height * fps * targetBitsPerPixel / 8000.0));
       system(buf);
 
       cout << "pass 2, " << flush;
-      sprintf(buf,"./vpxenc %s/%s-%d.yuv -o %s/%s.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=2 --minsection-pct=5 --maxsection-pct=1000 --bias-pct=50 -t 6 --end-usage=vbr --good --profile=0 --arnr-maxframes=7 --arnr-strength=5 --arnr-type=3 --psnr &> /dev/null", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, lround(width * height * fps * targetBitsPerPixel / 8000.0));
+      sprintf(buf,"./vpxenc %s/%s-%d.yuv -o %s/%s-%d.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=2 --minsection-pct=5 --maxsection-pct=1000 --bias-pct=50 -t 6 --end-usage=cq --cq-level=5 --good --profile=0 --arnr-maxframes=7 --arnr-strength=5 --arnr-type=3 --psnr &> /dev/null", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, lround(width * height * fps * targetBitsPerPixel / 8000.0));
+      system(buf);
+
+      cout << "renaming tmp, " << flush;
+      sprintf(buf, "mv %s/%s-%d.webm %s/%s.webm", destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, destPath, f.substr(0, f.length()-4).c_str());
       system(buf);
 
       // deleting mp4, fpf and yuv files
