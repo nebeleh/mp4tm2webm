@@ -16,7 +16,7 @@ using namespace std;
 char buf[2000];
 char destTop[2000];
 int width, height;
-double targetBitsPerPixel, fps;
+double targetBitsPerPixel, fps, cqLevel;
 time_t instanceNumber;
 
 inline long lround(double x) {
@@ -94,7 +94,7 @@ int loadData(const char *sourcePath, const char *destPath)
       system(buf);
 
       cout << "pass 2, " << flush;
-      sprintf(buf,"./vpxenc %s/%s-%d.yuv -o %s/%s-%d.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=2 --minsection-pct=5 --maxsection-pct=1000 --bias-pct=50 -t 6 --end-usage=cq --cq-level=5 --good --profile=0 --arnr-maxframes=7 --arnr-strength=5 --arnr-type=3 --psnr &> /dev/null", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, lround(width * height * fps * targetBitsPerPixel / 8000.0));
+      sprintf(buf,"./vpxenc %s/%s-%d.yuv -o %s/%s-%d.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=2 --minsection-pct=5 --maxsection-pct=1000 --bias-pct=50 -t 6 --end-usage=cq --cq-level=%ld --good --profile=0 --arnr-maxframes=7 --arnr-strength=5 --arnr-type=3 --psnr &> /dev/null", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, lround(width * height * fps * targetBitsPerPixel / 8000.0), lround(cqLevel));
       system(buf);
 
       cout << "renaming tmp, " << flush;
@@ -237,13 +237,14 @@ int main(int argc, char **argv)
   if (argc != 4)
   {
     cout << "incorrect parameters, usage: " << endl;
-    cout << "./converter sourcevideos_path destvideos_path targetBitsPerPixel" << endl;
+    cout << "./converter sourcevideos_path destvideos_path cqLevel" << endl;
     return -1;
   }
 
   // do computations using source and destination folder
   instanceNumber = time(0);
-  targetBitsPerPixel = atof(argv[3]);
+  targetBitsPerPixel = 2; // base on experiments, 2 is a good value
+  cqLevel = atof(argv[3]); // 10-50; high quality: 10, medium: 30, low: 50
   int res = prepareData(argv[1], argv[2]);
 
   if (!res)
