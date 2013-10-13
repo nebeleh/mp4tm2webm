@@ -15,7 +15,7 @@ using namespace std;
 
 char buf[2000];
 char destTop[2000];
-int width, height;
+int width, height, pid;
 double targetBitsPerPixel, fps, cqLevel;
 time_t instanceNumber;
 
@@ -42,15 +42,15 @@ int loadData(const char *sourcePath, const char *destPath)
     return -1;
   }
 
-  string f,t,fullPath;
+  string f, t, fullPath;
   struct stat st;
   while((entry = readdir(dp)))
   {
     f = (string)entry->d_name;
     if (f == "." || f == "..") continue;
-    fullPath = (string)sourcePath+'/'+f;
+    fullPath = (string)sourcePath + '/' + f;
     stat(fullPath.c_str(), &st);
-    string tempDestPath = (string)destPath+'/'+f;
+    string tempDestPath = (string)destPath + '/' + f;
 
     // if this is a directory or a symlink, go inside it and make a similar structure in destination
     if((S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode)))
@@ -77,33 +77,33 @@ int loadData(const char *sourcePath, const char *destPath)
 
       // adding black frames
       cout << fullPath << ": adding black frames, " << flush;
-      sprintf(buf,"./ffmpeg -y -i %s/black-%d.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp2-%d &> /dev/null & ./ffmpeg -y -i %s -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp1-%d &> /dev/null & ./ffmpeg -y -f mpegts -i \"concat:%s/temp1-%d|%s/temp2-%d\" -c copy %s/%s-%d.mp4 &> /dev/null", destTop, instanceNumber, destTop, instanceNumber, fullPath.c_str(), destTop, instanceNumber, destTop, instanceNumber, destTop, instanceNumber, destPath, f.c_str(), instanceNumber);
+      sprintf(buf, "./ffmpeg -y -i %s/black-%d-%d.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp2-%d-%d &> /dev/null & ./ffmpeg -y -i %s -c copy -bsf:v h264_mp4toannexb -f mpegts %s/temp1-%d-%d &> /dev/null & ./ffmpeg -y -f mpegts -i \"concat:%s/temp1-%d-%d|%s/temp2-%d-%d\" -c copy %s/%s-%d-%d.mp4 &> /dev/null", destTop, instanceNumber, pid, destTop, instanceNumber, pid, fullPath.c_str(), destTop, instanceNumber, pid, destTop, instanceNumber, pid, destTop, instanceNumber, pid, destPath, f.c_str(), instanceNumber, pid);
       system(buf);
 
       cout << "renaming tmp, " << flush;
-      sprintf(buf, "mv %s/%s-%d.mp4 %s/%s", destPath, f.c_str(), instanceNumber, destPath, f.c_str());
+      sprintf(buf, "mv %s/%s-%d-%d.mp4 %s/%s", destPath, f.c_str(), instanceNumber, pid, destPath, f.c_str());
       system(buf);
 
       // converting to webm
       cout << "encoding to yuv, " << flush;
-      sprintf(buf,"./ffmpeg -i %s -pix_fmt yuv420p %s/%s-%d.yuv &> /dev/null", fullPath.c_str(), destPath, f.c_str(), instanceNumber);
+      sprintf(buf, "./ffmpeg -i %s -pix_fmt yuv420p %s/%s-%d-%d.yuv &> /dev/null", fullPath.c_str(), destPath, f.c_str(), instanceNumber, pid);
       system(buf);
 
       cout << "decoding to webm, pass 1, " << flush;
-      sprintf(buf,"./vpxenc %s/%s-%d.yuv -o %s/%s-%d.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=1 --minsection-pct=0 --maxsection-pct=800 -t 0 &> /dev/null", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, lround(width * height * fps * targetBitsPerPixel / 8000.0));
+      sprintf(buf, "./vpxenc %s/%s-%d-%d.yuv -o %s/%s-%d-%d.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=1 --minsection-pct=0 --maxsection-pct=800 -t 0 &> /dev/null", destPath, f.c_str(), instanceNumber, pid, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, pid, width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, pid, lround(width * height * fps * targetBitsPerPixel / 8000.0));
       system(buf);
 
       cout << "pass 2, " << flush;
-      sprintf(buf,"./vpxenc %s/%s-%d.yuv -o %s/%s-%d.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=2 --minsection-pct=5 --maxsection-pct=1000 --bias-pct=50 -t 6 --end-usage=cq --cq-level=%ld --good --profile=0 --arnr-maxframes=7 --arnr-strength=5 --arnr-type=3 --psnr &> /dev/null", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, lround(width * height * fps * targetBitsPerPixel / 8000.0), lround(cqLevel));
+      sprintf(buf, "./vpxenc %s/%s-%d-%d.yuv -o %s/%s-%d-%d.webm -w %d -h %d --fps=%ld/1 -p 2 --codec=vp8 --fpf=%s/%s-%d-%d.fpf --cpu-used=0 --target-bitrate=%ld --auto-alt-ref=1 -v --min-q=4 --max-q=52 --drop-frame=0 --lag-in-frames=25 --kf-min-dist=0 --kf-max-dist=120 --static-thresh=0 --tune=psnr --pass=2 --minsection-pct=5 --maxsection-pct=1000 --bias-pct=50 -t 6 --end-usage=cq --cq-level=%ld --good --profile=0 --arnr-maxframes=7 --arnr-strength=5 --arnr-type=3 --psnr &> /dev/null", destPath, f.c_str(), instanceNumber, pid, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, pid, width, height, lround(fps), destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, pid, lround(width * height * fps * targetBitsPerPixel / 8000.0), lround(cqLevel));
       system(buf);
 
       cout << "renaming tmp, " << flush;
-      sprintf(buf, "mv %s/%s-%d.webm %s/%s.webm", destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, destPath, f.substr(0, f.length()-4).c_str());
+      sprintf(buf, "mv %s/%s-%d-%d.webm %s/%s.webm", destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, pid, destPath, f.substr(0, f.length()-4).c_str());
       system(buf);
 
       // deleting mp4, fpf and yuv files
       cout << "deleting temp files, " << flush;
-      sprintf(buf,"rm %s/%s-%d.yuv %s/%s-%d.fpf -f", destPath, f.c_str(), instanceNumber, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber);
+      sprintf(buf, "rm %s/%s-%d-%d.yuv %s/%s-%d-%d.fpf -f", destPath, f.c_str(), instanceNumber, pid, destPath, f.substr(0,f.length()-4).c_str(), instanceNumber, pid);
       system(buf);
       cout << "done!" << endl;
     }
@@ -209,14 +209,14 @@ int prepareData(const char *sourcePath, const char *destPath)
   }
 
   // create a 10 frame, 1 second black video in correct width and height
-  sprintf(buf,"./ffmpeg -t 1 -s %dx%d -vcodec rawvideo -f rawvideo -pix_fmt rgb24 -r 10 -i /dev/zero -vcodec libx264 -preset slow -pix_fmt yuv420p %s/black-%d.mp4 > /dev/null 2>&1",width,height,destPath,instanceNumber);
+  sprintf(buf, "./ffmpeg -t 1 -s %dx%d -vcodec rawvideo -f rawvideo -pix_fmt rgb24 -r 10 -i /dev/zero -vcodec libx264 -preset slow -pix_fmt yuv420p %s/black-%d-%d.mp4 > /dev/null 2>&1", width, height, destPath, instanceNumber, pid);
   cout << "Creating black frames ..." << endl;
   system(buf);
 
   // create fifo files
-  sprintf(destTop,"%s",destPath);
+  sprintf(destTop, "%s", destPath);
   cout << "Creating temporary fifo files ..." << endl;
-  sprintf(buf,"mkfifo %s/temp1-%d %s/temp2-%d", destTop, instanceNumber, destTop, instanceNumber);
+  sprintf(buf, "mkfifo %s/temp1-%d-%d %s/temp2-%d-%d", destTop, instanceNumber, pid, destTop, instanceNumber, pid);
   system(buf);
 
   // recursively check for files, add black frames, convert mp4s
@@ -224,7 +224,7 @@ int prepareData(const char *sourcePath, const char *destPath)
 
   // delete fifo files and black video
   cout << "Deleting temporary files ..." << endl;
-  sprintf(buf,"rm -f %s/temp1-%d %s/temp2-%d %s/black-%d.mp4", destTop, instanceNumber, destTop, instanceNumber, destTop, instanceNumber);
+  sprintf(buf, "rm -f %s/temp1-%d-%d %s/temp2-%d-%d %s/black-%d-%d.mp4", destTop, instanceNumber, pid, destTop, instanceNumber, pid, destTop, instanceNumber, pid);
   system(buf);
 
   // finish
@@ -234,10 +234,10 @@ int prepareData(const char *sourcePath, const char *destPath)
 int main(int argc, char **argv)
 {
   // check whether there are right amount of parameters
-  if (argc != 4)
+  if (argc < 4 || argc > 5)
   {
     cout << "incorrect parameters, usage: " << endl;
-    cout << "./converter sourcevideos_path destvideos_path cqLevel" << endl;
+    cout << "./converter sourcevideos_path destvideos_path cqLevel [process_id]" << endl;
     return -1;
   }
 
@@ -245,6 +245,11 @@ int main(int argc, char **argv)
   instanceNumber = time(0);
   targetBitsPerPixel = 2; // base on experiments, 2 is a good value
   cqLevel = atof(argv[3]); // 10-50; high quality: 10, medium: 30, low: 50
+  if (argc == 5)
+    pid = atoi(argv[4]); // process id for parallel jobs
+  else
+    pid = 0;
+
   int res = prepareData(argv[1], argv[2]);
 
   if (!res)
